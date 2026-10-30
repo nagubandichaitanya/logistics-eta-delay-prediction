@@ -433,22 +433,98 @@ def generate_delay_reasons(
 
 if __name__ == "__main__":
 
-    tracking_events = pd.read_csv(
-        "data/raw/tracking_event.csv"
-    )
+    from pathlib import Path
+
+    raw_dir = Path("data/raw")
+    processed_dir = Path("data/processed")
+
+    processed_dir.mkdir(parents=True, exist_ok=True)
+
+    print("Loading raw datasets...")
+
+    tracking_events = pd.read_csv(raw_dir / "tracking_event.csv")
+    shipment_legs = pd.read_csv(raw_dir / "shipment_leg.csv")
+    routes = pd.read_csv(raw_dir / "route.csv")
+    weather_events = pd.read_csv(raw_dir / "weather_event.csv")
+    shipments = pd.read_csv(raw_dir / "shipment.csv")
+    service_levels = pd.read_csv(raw_dir / "service_level.csv")
+    facility_queue = pd.read_csv(raw_dir / "facility_queue.csv")
+
+    # Use the latest ingestion timestamp as the dataset observation cutoff.
+    observation_cutoff = pd.to_datetime(
+        tracking_events["ingested_at"],
+        format="mixed",
+        utc=True
+    ).max()
+
+    print("Observation cutoff:", observation_cutoff)
+
+    # 1. Generate shipment status history.
+    print("\nGenerating shipment status history...")
 
     status_history = generate_shipment_status_history(
         tracking_events
     )
 
-    print("Shipment status history generated")
-    print("Total records:", len(status_history))
-    print("\nStatus distribution:")
-    print(status_history["status"].value_counts())
-
     status_history.to_csv(
-        "data/processed/shipment_status_history.csv",
+        processed_dir / "shipment_status_history.csv",
         index=False
     )
 
-    print("\nSaved to data/processed/shipment_status_history.csv")
+    print("Status history records:", len(status_history))
+
+    # 2. Generate shipment route history.
+    print("\nGenerating shipment route history...")
+
+    route_history = generate_shipment_route_history(
+        shipment_legs
+    )
+
+    route_history.to_csv(
+        processed_dir / "shipment_route_history.csv",
+        index=False
+    )
+
+    print("Route history records:", len(route_history))
+
+    # 3. Generate shipment weather exposure.
+    print("\nGenerating shipment weather exposure...")
+
+    weather_exposure = generate_shipment_weather_exposure(
+        shipment_legs,
+        routes,
+        weather_events
+    )
+
+    weather_exposure.to_csv(
+        processed_dir / "shipment_weather_exposure.csv",
+        index=False
+    )
+
+    print("Weather exposure records:", len(weather_exposure))
+
+    # 4. Generate shipment delay reasons.
+    print("\nGenerating shipment delay reasons...")
+
+    delay_reasons = generate_delay_reasons(
+        shipments,
+        service_levels,
+        weather_exposure,
+        shipment_legs,
+        routes,
+        facility_queue,
+        observation_cutoff
+    )
+
+    delay_reasons.to_csv(
+        processed_dir / "delay_reason.csv",
+        index=False
+    )
+
+    print("Delay reason records:", len(delay_reasons))
+
+    print("\nALL FOUR DERIVED DATASETS GENERATED")
+    print("-----------------------------------")
+
+    for file_path in sorted(processed_dir.glob("*.csv")):
+        print(f"{file_path.name}: {file_path.stat().st_size:,} bytes")
