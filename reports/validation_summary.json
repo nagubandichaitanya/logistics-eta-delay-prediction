@@ -1,0 +1,166 @@
+{
+    "project": "Logistics ETA Prediction and Delay Detection",
+    "random_seed": 20261022,
+    "total_datasets": 19,
+    "manifest_validation": {
+        "passed": true,
+        "datasets": [
+            {
+                "dataset": "carrier",
+                "file_exists": true,
+                "row_count_valid": true,
+                "column_count_valid": true,
+                "checksum_valid": true
+            },
+            {
+                "dataset": "carrier_calendar",
+                "file_exists": true,
+                "row_count_valid": true,
+                "column_count_valid": true,
+                "checksum_valid": true
+            },
+            {
+                "dataset": "facility",
+                "file_exists": true,
+                "row_count_valid": true,
+                "column_count_valid": true,
+                "checksum_valid": true
+            },
+            {
+                "dataset": "facility_calendar",
+                "file_exists": true,
+                "row_count_valid": true,
+                "column_count_valid": true,
+                "checksum_valid": true
+            },
+            {
+                "dataset": "facility_queue",
+                "file_exists": true,
+                "row_count_valid": true,
+                "column_count_valid": true,
+                "checksum_valid": true
+            },
+            {
+                "dataset": "route",
+                "file_exists": true,
+                "row_count_valid": true,
+                "column_count_valid": true,
+                "checksum_valid": true
+            },
+            {
+                "dataset": "service_level",
+                "file_exists": true,
+                "row_count_valid": true,
+                "column_count_valid": true,
+                "checksum_valid": true
+            },
+            {
+                "dataset": "shipment",
+                "file_exists": true,
+                "row_count_valid": true,
+                "column_count_valid": true,
+                "checksum_valid": true
+            },
+            {
+                "dataset": "shipment_leg",
+                "file_exists": true,
+                "row_count_valid": true,
+                "column_count_valid": true,
+                "checksum_valid": true
+            },
+            {
+                "dataset": "tracking_event",
+                "file_exists": true,
+                "row_count_valid": true,
+                "column_count_valid": true,
+                "checksum_valid": true
+            },
+            {
+                "dataset": "weather_event",
+                "file_exists": true,
+                "row_count_valid": true,
+                "column_count_valid": true,
+                "checksum_valid": true
+            },
+            {
+                "dataset": "delay_reason",
+                "file_exists": true,
+                "row_count_valid": true,
+                "column_count_valid": true,
+                "checksum_valid": true
+            },
+            {
+                "dataset": "eta_features",
+                "file_exists": true,
+                "row_count_valid": true,
+                "column_count_valid": true,
+                "checksum_valid": true
+            },
+            {
+                "dataset": "eta_features_multi_snapshot",
+                "file_exists": true,
+                "row_count_valid": true,
+                "column_count_valid": true,
+                "checksum_valid": true
+            },
+            {
+                "dataset": "ground_truth",
+                "file_exists": true,
+                "row_count_valid": true,
+                "column_count_valid": true,
+                "checksum_valid": true
+            },
+            {
+                "dataset": "ground_truth_multi_snapshot",
+                "file_exists": true,
+                "row_count_valid": true,
+                "column_count_valid": true,
+                "checksum_valid": true
+            },
+            {
+                "dataset": "shipment_route_history",
+                "file_exists": true,
+                "row_count_valid": true,
+                "column_count_valid": true,
+                "checksum_valid": true
+            },
+            {
+                "dataset": "shipment_status_history",
+                "file_exists": true,
+                "row_count_valid": true,
+                "column_count_valid": true,
+                "checksum_valid": true
+            },
+            {
+                "dataset": "shipment_weather_exposure",
+                "file_exists": true,
+                "row_count_valid": true,
+                "column_count_valid": true,
+                "checksum_valid": true
+            }
+        ]
+    },
+    "feature_validation": {
+        "passed": true,
+        "details": {
+            "feature_record_count": 2718,
+            "label_record_count": 2718,
+            "duplicate_feature_keys": 0,
+            "duplicate_label_keys": 0,
+            "feature_label_keys_match": true,
+            "target_leakage_columns": [],
+            "snapshot_record_counts": {
+                "0": 1000,
+                "12": 899,
+                "24": 819
+            }
+        }
+    },
+    "automated_tests": {
+        "passed": true,
+        "return_code": 0,
+        "output": ".........                                                                [100%]\n9 passed in 3.43s",
+        "errors": ""
+    },
+    "overall_status": "PASSED"
+}

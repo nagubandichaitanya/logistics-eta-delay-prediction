@@ -8,7 +8,10 @@ from src.logistics_eta.master_data import generate_all_master_data
 from src.logistics_eta.shipment_data import generate_shipments
 from src.logistics_eta.tracking_events import generate_tracking_events
 from src.logistics_eta.disruption_data import generate_all_disruption_data
-
+from src.logistics_eta.scenario_validation import (
+    validate_route_sequence,
+    validate_shipment_lifecycle,
+)
 
 def check_unique(data, column, dataset_name):
     if data[column].isna().any():
@@ -136,6 +139,18 @@ def validate_datasets(datasets):
     check_foreign_key(
         datasets["carrier_calendar"], "carrier_id",
         datasets["carrier"], "carrier_id", "calendar carrier"
+    )
+    # Run dedicated shipment lifecycle validation
+    validate_shipment_lifecycle(
+        datasets["shipment"],
+        datasets["tracking_event"]
+    )
+
+    print("\nALL DATA VALIDATION CHECKS PASSED")
+    # Validate route continuity and leg sequence
+    validate_route_sequence(
+        datasets["shipment_leg"],
+        datasets["route"]
     )
 
     # Tracking event timestamp validation

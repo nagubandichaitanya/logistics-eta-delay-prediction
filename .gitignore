@@ -6,6 +6,8 @@ __pycache__/
 data/raw/*
 data/processed/*
 reports/*
+!reports/source_manifest.json
+!reports/validation_summary.json
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 !reports/.gitkeep

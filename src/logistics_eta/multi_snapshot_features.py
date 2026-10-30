@@ -3,6 +3,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from src.logistics_eta.scenario_validation import filter_known_events
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 RAW_DIR = PROJECT_ROOT / "data" / "raw"
@@ -70,7 +72,10 @@ def generate_snapshots(data):
     queues = data["facility_queue"]
     weather = data["weather_event"]
 
-    route_distance = routes.set_index("route_id")["distance_km"].to_dict()
+    # Lookup dictionaries
+    route_distance = routes.set_index("route_id")[
+        "distance_km"
+    ].to_dict()
 
     route_facilities = routes.set_index("route_id")[
         ["origin_facility_id", "destination_facility_id"]
@@ -84,33 +89,26 @@ def generate_snapshots(data):
         "late_grace_minutes"
     ].to_dict()
 
-    # Exclude duplicate tracking events.
-    events = events[
-        events["is_duplicate"].astype(str).str.lower() != "true"
-    ].copy()
-
+    # Store generated feature and label records
     feature_records = []
     label_records = []
 
+    # Process every shipment
     for _, shipment in shipments.iterrows():
 
+        # Step 1: Get shipment details
         shipment_id = shipment["shipment_id"]
         pickup_at = shipment["planned_pickup_at"]
         actual_delivery = shipment["actual_delivery_at"]
 
+        # Step 2: Get shipment legs
         shipment_legs = legs[
             legs["shipment_id"] == shipment_id
         ].copy().sort_values("leg_sequence")
 
         total_legs = len(shipment_legs)
 
-        total_distance = sum(
-            route_distance.get(route_id, 0)
-            for route_id in shipment_legs["route_id"]
-        )
-
-        carrier_ids = shipment_legs["carrier_id"].dropna().unique().tolist()
-
+        # Step 3: Identify all facilities on the shipment route
         route_facility_ids = set()
 
         for route_id in shipment_legs["route_id"]:
@@ -124,19 +122,39 @@ def generate_snapshots(data):
                     route_info["destination_facility_id"]
                 )
 
+        # Step 4: Identify carriers assigned to the shipment
+        carrier_ids = (
+            shipment_legs["carrier_id"]
+            .dropna()
+            .unique()
+            .tolist()
+        )
+
+        # Step 5: Calculate total shipment distance
+        total_distance = sum(
+            route_distance.get(route_id, 0)
+            for route_id in shipment_legs["route_id"]
+        )
+
+        # Step 6: Generate snapshots at 0, 12 and 24 hours
         for hours in SNAPSHOT_HOURS:
 
             prediction_at = pickup_at + pd.Timedelta(hours=hours)
 
-            # Do not predict for shipments already delivered.
-            if pd.notna(actual_delivery) and actual_delivery <= prediction_at:
+            # Do not predict for shipments already delivered
+            if (
+                pd.notna(actual_delivery)
+                and actual_delivery <= prediction_at
+            ):
                 continue
 
-            known_events = events[
-                (events["shipment_id"] == shipment_id)
-                & (events["event_at"] <= prediction_at)
-                & (events["ingested_at"] <= prediction_at)
-            ].copy()
+            # Step 7: Filter events known at prediction time
+            known_events = filter_known_events(
+                events[
+                    events["shipment_id"] == shipment_id
+                ],
+                prediction_at
+            )
 
             known_events = known_events.sort_values(
                 ["event_at", "ingested_at"]
@@ -144,7 +162,9 @@ def generate_snapshots(data):
 
             event_count = len(known_events)
 
+            # Step 8: Identify the latest tracking event
             if event_count > 0:
+
                 last_event = known_events.iloc[-1]
 
                 last_event_type = last_event["event_type"]
@@ -163,7 +183,7 @@ def generate_snapshots(data):
                 current_facility = shipment["origin_facility_id"]
                 minutes_since_last_event = None
 
-            # Calculate completed legs using known ARRIVED events.
+            # Step 9: Calculate completed legs using ARRIVED events
             completed_leg_ids = set(
                 known_events.loc[
                     known_events["event_type"] == "ARRIVED",
@@ -185,7 +205,7 @@ def generate_snapshots(data):
                 total_distance - completed_distance,
             )
 
-            # Latest queue observation valid at prediction time.
+            # Step 10: Get the latest valid facility queue observation
             known_queues = queues[
                 (queues["facility_id"] == current_facility)
                 & (queues["observed_at"] <= prediction_at)
@@ -194,18 +214,21 @@ def generate_snapshots(data):
             ].copy().sort_values("observed_at")
 
             if len(known_queues) > 0:
+
                 latest_queue = known_queues.iloc[-1]
 
                 queue_length = latest_queue["queue_length"]
                 estimated_wait = latest_queue["estimated_wait_minutes"]
-                capacity_utilization = latest_queue["capacity_utilization"]
+                capacity_utilization = latest_queue[
+                    "capacity_utilization"
+                ]
 
             else:
                 queue_length = None
                 estimated_wait = None
                 capacity_utilization = None
 
-            # Weather active at the planned route facilities.
+            # Step 11: Identify active weather events on planned route facilities
             active_weather = weather[
                 weather["facility_id"].isin(route_facility_ids)
                 & (weather["starts_at"] <= prediction_at)
@@ -215,10 +238,13 @@ def generate_snapshots(data):
             weather_count = len(active_weather)
 
             if weather_count > 0:
-                max_weather_factor = active_weather["delay_factor"].max()
+                max_weather_factor = active_weather[
+                    "delay_factor"
+                ].max()
             else:
                 max_weather_factor = 1.0
 
+            # Step 12: Calculate shipment timing features
             shipment_age = (
                 prediction_at - shipment["created_at"]
             ).total_seconds() / 60
@@ -227,6 +253,7 @@ def generate_snapshots(data):
                 shipment["promised_delivery_at"] - prediction_at
             ).total_seconds() / 60
 
+            # Step 13: Save model features
             feature_records.append({
                 "shipment_id": shipment_id,
                 "snapshot_hours": hours,
@@ -255,10 +282,11 @@ def generate_snapshots(data):
                 "max_weather_delay_factor": max_weather_factor,
             })
 
-            # Keep labels separate from model features.
+            # Step 14: Generate ground-truth labels separately
             is_delivered = pd.notna(actual_delivery)
 
             if is_delivered:
+
                 remaining_minutes = (
                     actual_delivery - prediction_at
                 ).total_seconds() / 60
@@ -322,7 +350,9 @@ def main():
     print("Total feature records:", len(features))
 
     print("\nRecords by snapshot:")
-    print(features["snapshot_hours"].value_counts().sort_index())
+    print(
+        features["snapshot_hours"].value_counts().sort_index()
+    )
 
     print("\nTracking events by snapshot:")
     print(
