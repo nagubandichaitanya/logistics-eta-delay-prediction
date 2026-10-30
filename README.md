@@ -1,36 +1,56 @@
 # Logistics ETA Prediction and Delay Detection System
 
-An end-to-end logistics analytics and machine learning project that generates shipment data, engineers time-aware features, predicts estimated delivery time (ETA), and identifies shipments at risk of SLA delay.
+An end-to-end logistics analytics and machine learning system that estimates shipment delivery times, identifies potential delays, and evaluates shipment performance using time-aware tracking, route, carrier, facility, and weather information.
+
+**GitHub Repository:**  
+https://github.com/nagubandichaitanya/logistics-eta-delay-prediction
+
+---
 
 ## 1. Project Overview
 
-The system combines logistics information from:
+The Logistics ETA Prediction and Delay Detection System combines multiple logistics data sources to estimate shipment arrival times and identify shipments at risk of delay.
 
-- Shipments and shipment legs
-- Carrier and route information
+The system works with:
+
+- Shipment and shipment-leg information
+- Carrier and route details
 - Tracking events
-- Facility queues
+- Facility queues and operating calendars
 - Weather disruptions
 - Service-level agreements (SLAs)
+- Shipment status and route history
 
-It produces ETA predictions and delay probabilities using machine learning models.
+The project demonstrates data engineering, synthetic data generation, PostgreSQL database integration, temporal feature engineering, machine learning, REST API development, and automated testing.
 
-The project uses synthetic logistics data and is designed to demonstrate data engineering, temporal feature engineering, machine learning, PostgreSQL integration, REST API development, and automated testing.
+It uses reproducible synthetic logistics data and is designed as a prototype for logistics ETA prediction and delay detection.
 
-## 2. Technology Stack
+## 2. Objectives
+
+1. Generate realistic synthetic logistics datasets.
+2. Design and maintain relational logistics data in PostgreSQL.
+3. Validate shipment, route, tracking, and disruption records.
+4. Generate time-aware ETA prediction features.
+5. Prevent future-event and late-arriving-event data leakage.
+6. Predict remaining shipment delivery time using regression.
+7. Detect potential shipment delays using classification.
+8. Expose prediction functionality through FastAPI.
+9. Maintain reproducible datasets and validation reports.
+
+## 3. Technology Stack
 
 | Area | Technologies |
 |---|---|
-| Programming | Python 3.11 |
+| Programming language | Python 3.11 |
 | Database | PostgreSQL |
 | Data processing | Pandas, NumPy |
 | Machine learning | Scikit-learn, Random Forest |
-| API | FastAPI, Uvicorn |
+| API development | FastAPI, Uvicorn |
 | Model persistence | Joblib |
 | Testing | Pytest, HTTPX2 |
 | Version control | Git, GitHub |
 
-## 3. Project Structure
+## 4. Project Structure
 
 ```text
 logistics-eta-delay-prediction/
@@ -40,13 +60,21 @@ logistics-eta-delay-prediction/
 │   └── processed/
 │
 ├── docs/
+│   ├── AI_USAGE.md
+│   └── ASSUMPTIONS_AND_LIMITATIONS.md
+│
 ├── models/
+│
 ├── reports/
+│   ├── source_manifest.json
+│   └── validation_summary.json
+│
 ├── sql/
 │   └── schema.sql
 │
 ├── src/
 │   └── logistics_eta/
+│       ├── __init__.py
 │       ├── api.py
 │       ├── config.py
 │       ├── database_loader.py
@@ -56,13 +84,19 @@ logistics-eta-delay-prediction/
 │       ├── disruption_data.py
 │       ├── feature_engineering.py
 │       ├── master_data.py
-│       ├── shipment_data.py
-│       ├── tracking_events.py
+│       ├── model_training.py
 │       ├── multi_snapshot_features.py
-│       └── model_training.py
+│       ├── scenario_validation.py
+│       ├── shipment_data.py
+│       ├── source_manifest.py
+│       ├── tracking_events.py
+│       ├── validate_features.py
+│       └── validation_report.py
 │
 ├── tests/
-│   └── test_api.py
+│   ├── __init__.py
+│   ├── test_api.py
+│   └── test_negative_scenarios.py
 │
 ├── .env.example
 ├── .gitignore
@@ -70,46 +104,56 @@ logistics-eta-delay-prediction/
 └── requirements.txt
 ```
 
-Generated datasets, trained models, local environment files, and reports are not necessarily committed to GitHub. Follow the generation steps below to recreate them.
+Generated datasets, local environment files, and trained model artifacts are not necessarily committed to GitHub. They can be regenerated using the instructions below.
 
-## 4. Setup and Installation
+## 5. Prerequisites
 
-### Prerequisites
+Install the following:
 
-- Python 3.11+
-- PostgreSQL 15+
+- Python 3.11 or later
+- PostgreSQL 15 or later
 - Git
+- pip
 
-### Clone the repository
+## 6. Installation and Setup
+
+### Step 1: Clone the repository
 
 ```powershell
 git clone https://github.com/nagubandichaitanya/logistics-eta-delay-prediction.git
+
 cd logistics-eta-delay-prediction
 ```
 
-### Create a virtual environment
+### Step 2: Create a virtual environment
 
 ```powershell
 py -3.11 -m venv .venv
+```
+
+Activate it:
+
+```powershell
 .venv\Scripts\Activate.ps1
 ```
 
-### Install dependencies
+### Step 3: Install dependencies
 
 ```powershell
 python -m pip install --upgrade pip
+
 pip install -r requirements.txt
 ```
 
-### Configure environment variables
+### Step 4: Configure environment variables
 
-Copy the example file:
+Create a local `.env` file from the example:
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-Update the `DATABASE_URL` in `.env` with your local PostgreSQL password:
+Update the database connection details in `.env`:
 
 ```text
 APP_ENV=development
@@ -122,36 +166,62 @@ DISRUPTION_COUNT=1000
 DATA_DIR=data
 ```
 
-Do not commit `.env` or expose database credentials.
+Replace `YOUR_PASSWORD` with your local PostgreSQL password.
 
-## 5. Database Setup
+**Security:** Never upload `.env` or expose database credentials in GitHub.
 
-Create the PostgreSQL database:
+## 7. PostgreSQL Database Setup
+
+### Step 1: Create the database
 
 ```powershell
 psql -U postgres -h localhost -c "CREATE DATABASE logistics_eta_db;"
 ```
 
-Execute the database schema:
+Run this only if the database does not already exist.
+
+### Step 2: Execute the schema
 
 ```powershell
 psql -U postgres -d logistics_eta_db -h localhost -f sql/schema.sql
 ```
 
-The schema defines normalized tables for shipments, shipment legs, carriers, routes, facilities, tracking events, weather events, facility queues, SLA definitions, ETA estimates, and historical records.
+The database schema contains 16 relational tables covering:
 
-## 6. Data Generation Pipeline
+- Carrier
+- Carrier calendar
+- Facility
+- Facility calendar
+- Route
+- Service level
+- Shipment
+- Shipment leg
+- Tracking event
+- Weather event
+- Facility queue
+- ETA estimate
+- Delay reason
+- Shipment status history
+- Shipment route history
+- Shipment weather exposure
 
-The default starter configuration is:
+The schema uses primary keys and foreign keys to maintain data relationships and integrity.
 
-| Dataset | Target volume |
+## 8. Synthetic Data Generation
+
+The project uses a configurable synthetic data generator.
+
+### Starter dataset configuration
+
+| Dataset | Configuration |
 |---|---:|
 | Shipments | 1,000 |
-| Tracking events | Approximately 6,000 |
+| Tracking events per shipment | 6 |
 | Facilities | 100 |
 | Disruption windows | 1,000 |
+| Random seed | 20261022 |
 
-The random seed is `20261022`.
+The generator supports parameterized configuration for larger datasets.
 
 ### Step 1: Generate raw datasets
 
@@ -160,6 +230,20 @@ python -m src.logistics_eta.dataset_pipeline
 ```
 
 This generates and validates the source datasets in `data/raw/`.
+
+Generated datasets include:
+
+- carrier.csv
+- carrier_calendar.csv
+- facility.csv
+- facility_calendar.csv
+- facility_queue.csv
+- route.csv
+- service_level.csv
+- shipment.csv
+- shipment_leg.csv
+- tracking_event.csv
+- weather_event.csv
 
 ### Step 2: Load raw datasets into PostgreSQL
 
@@ -175,10 +259,10 @@ python -m src.logistics_eta.derived_data
 
 This generates:
 
-- `shipment_status_history.csv`
-- `shipment_route_history.csv`
-- `shipment_weather_exposure.csv`
-- `delay_reason.csv`
+- shipment_status_history.csv
+- shipment_route_history.csv
+- shipment_weather_exposure.csv
+- delay_reason.csv
 
 ### Step 4: Load derived datasets into PostgreSQL
 
@@ -186,54 +270,80 @@ This generates:
 python -m src.logistics_eta.derived_data_loader
 ```
 
-The loaders expect an appropriately initialized database. The derived-data loader deliberately stops if its destination tables are already populated, to prevent duplicate inserts. For a clean end-to-end rebuild, use a fresh database and follow the setup steps again.
+The database must be initialized before loading. The derived-data loader prevents duplicate inserts when its destination tables are already populated.
 
-## 7. Feature Engineering
+For a complete rebuild, use a fresh database and follow the database setup and loading steps in order.
 
-Generate time-aware shipment features at multiple prediction snapshots:
+## 9. Temporal Feature Engineering
+
+The project generates multiple ETA prediction snapshots for each shipment.
+
+Run:
 
 ```powershell
 python -m src.logistics_eta.multi_snapshot_features
 ```
 
-The pipeline creates snapshots at:
+### Prediction snapshots
 
-- Shipment pickup (0 hours)
-- 12 hours after pickup
-- 24 hours after pickup
+| Snapshot | Prediction time |
+|---|---|
+| 0 hours | At planned pickup |
+| 12 hours | 12 hours after planned pickup |
+| 24 hours | 24 hours after planned pickup |
 
-It excludes delivered shipments from snapshots after their delivery time.
+Shipments already delivered before a prediction timestamp are excluded from that snapshot.
 
-Features include:
+### Features generated
 
-- Shipment weight, priority, and service level
-- Shipment age and remaining promised time
-- Planned route distance and number of legs
+- Shipment weight and priority
+- Service level
+- Shipment age
+- Remaining promised delivery time
+- Planned route distance
+- Number of route legs
 - Completed and remaining route distance
-- Tracking event count and last known event
+- Tracking event count
+- Last known tracking event
 - Time since the last tracking event
-- Facility queue length and estimated wait
-- Active weather exposure
-- Prediction time information
+- Facility queue information
+- Weather exposure
+- Prediction timestamp information
 
-Outputs:
+### Feature and ground-truth separation
 
-- `data/processed/eta_features_multi_snapshot.csv`
-- `data/processed/ground_truth_multi_snapshot.csv`
+The feature pipeline creates two separate datasets:
 
-Ground-truth labels are kept separate from model features to prevent target leakage.
+```text
+data/processed/
+    eta_features_multi_snapshot.csv
+    ground_truth_multi_snapshot.csv
+```
 
-## 8. Machine Learning Models
+Ground-truth labels are kept separate from model features to reduce the risk of target leakage.
 
-Train both models:
+The generated multi-snapshot dataset contains:
+
+| Snapshot | Feature records |
+|---|---:|
+| 0 hours | 1,000 |
+| 12 hours | 899 |
+| 24 hours | 819 |
+| **Total** | **2,718** |
+
+## 10. Machine Learning Models
+
+Run the training pipeline:
 
 ```powershell
 python -m src.logistics_eta.model_training
 ```
 
-### ETA prediction — Regression
+The project implements two machine learning tasks.
 
-A Random Forest Regressor predicts the remaining delivery time in minutes.
+### A. ETA Prediction — Regression
+
+A Random Forest Regressor estimates the remaining delivery time in minutes.
 
 Evaluation metrics:
 
@@ -241,9 +351,9 @@ Evaluation metrics:
 - Root Mean Squared Error (RMSE)
 - R-squared (R²)
 
-### Delay detection — Classification
+### B. Delay Detection — Classification
 
-A Random Forest Classifier predicts whether a shipment will exceed its SLA deadline.
+A Random Forest Classifier predicts whether a shipment is likely to exceed its SLA deadline.
 
 Evaluation metrics:
 
@@ -254,9 +364,11 @@ Evaluation metrics:
 - ROC-AUC
 - Confusion matrix
 
-The evaluation uses a chronological shipment-level train/test split. All snapshots belonging to the same shipment remain in the same partition.
+The training pipeline uses a chronological shipment-level train/test split. Snapshots belonging to the same shipment are kept in the same partition.
 
-### Current experimental results
+### Experimental results
+
+The current README records the following preliminary results from the synthetic-data experiment:
 
 | Metric | Result |
 |---|---:|
@@ -269,15 +381,20 @@ The evaluation uses a chronological shipment-level train/test split. All snapsho
 | Delay classification F1-score | 88.79% |
 | Delay classification ROC-AUC | 0.9656 |
 
-These are preliminary results on a synthetic dataset. They should not be interpreted as expected production performance.
+These are experimental results on synthetic data, not validated real-world performance.
 
 The training pipeline saves:
 
-- `models/eta_regression_model.joblib`
-- `models/delay_classification_model.joblib`
-- `reports/model_metrics.json`
+```text
+models/
+    eta_regression_model.joblib
+    delay_classification_model.joblib
 
-## 9. FastAPI Application
+reports/
+    model_metrics.json
+```
+
+## 11. FastAPI Application
 
 Start the API:
 
@@ -295,92 +412,240 @@ http://127.0.0.1:8000/docs
 |---|---|---|
 | GET | `/health` | Check API and model availability |
 | POST | `/predict/eta` | Predict estimated delivery time |
-| POST | `/predict/delay` | Predict delay risk |
+| POST | `/predict/delay` | Predict shipment delay risk |
 
-Example ETA request:
-
-```json
-{
-  "shipment_id": "SHP-2026-000001"
-}
-```
-
-Example delay request:
+### Example ETA request
 
 ```json
 {
-  "shipment_id": "SHP-2026-000001"
+    "shipment_id": "SHP-2026-000001"
 }
 ```
 
-The prediction response includes the shipment ID, prediction timestamp, estimated delivery timestamp, remaining delivery minutes, predicted delay minutes, delay probability, and model version.
+### Example delay request
+
+```json
+{
+    "shipment_id": "SHP-2026-000001"
+}
+```
+
+The prediction response includes shipment identification, prediction timestamp, estimated delivery time, remaining delivery minutes, delay information, and model version, according to the endpoint response schema.
 
 Successful predictions are persisted in the PostgreSQL `eta_estimate` table.
 
-**Current API limitation:** The API retrieves the latest available precomputed feature snapshot for the requested shipment. It does not yet calculate features from live tracking events or real-time weather and facility feeds. Predictions therefore demonstrate the model and API workflow using historical synthetic data, not a production live-ETA service.
+**API limitation:** The current API retrieves the latest available precomputed feature snapshot. It does not yet calculate features from live tracking events, real-time weather feeds, or live facility data. It demonstrates the model and API workflow rather than a production live-ETA service.
 
-## 10. Automated Testing
+## 12. Data Validation and Negative Scenario Testing
 
-Run the test suite:
+The project includes validation for data integrity and temporal correctness.
+
+### Data validation checks
+
+- Primary-key uniqueness
+- Foreign-key integrity
+- Allowed enumeration values
+- Timestamp ordering
+- Shipment lifecycle consistency
+- Duplicate tracking records
+- Route sequence connectivity
+- Event and ingestion timestamp consistency
+- Shipment status and delivery event consistency
+
+### Temporal leakage prevention
+
+For a prediction timestamp, a tracking event is eligible only when:
+
+```text
+event_at <= prediction_at
+AND
+ingested_at <= prediction_at
+```
+
+This prevents future events and late-arriving events from leaking into historical predictions.
+
+### Negative scenarios tested
+
+The test suite includes:
+
+1. Late-arriving tracking event exclusion.
+2. Disconnected shipment route detection.
+3. Future tracking event exclusion.
+4. In-transit shipment with an inconsistent delivered event.
+
+### Run automated tests
 
 ```powershell
 pytest -q
 ```
 
-The API tests cover:
+The latest verified test result during development was:
 
-- Health endpoint
-- ETA prediction
-- Delay prediction
-- Invalid shipment ID
-- Missing shipment ID
+```text
+9 passed
+```
 
-## 11. Data Quality and Temporal Leakage Controls
+## 13. Feature Validation
 
-The data pipeline validates:
+Run:
 
-- Primary-key uniqueness
-- Foreign-key integrity
-- Allowed enum values
-- Timestamp ordering
-- Shipment lifecycle consistency
-- Duplicate tracking records
-- Non-negative delay values
-- SLA label consistency
+```powershell
+python -m src.logistics_eta.validate_features
+```
 
-For a prediction timestamp, tracking events are only eligible when both their event time and ingestion time are at or before the prediction cutoff.
+This checks:
 
-This prevents late-arriving tracking events from leaking future information into historical predictions.
+- Duplicate feature records
+- Duplicate ground-truth records
+- Feature and label key alignment
+- Target leakage columns
+- Snapshot-level label counts
 
-## 12. Assumptions and Limitations
+The latest verified feature-validation result was:
 
-- The current dataset is synthetic and uses a fixed random seed.
-- Weather exposure represents a time and facility overlap; it does not prove that weather caused a delay.
-- Facility queue overlap is a potential contributing signal, not confirmed causation.
-- Weather records do not currently have a separate ingestion timestamp. The feature pipeline uses the documented weather-window assumption.
-- The API uses precomputed historical features rather than live operational feeds.
-- Model performance must be evaluated on real operational data before production use.
-- The current starter configuration is smaller than the full-scale challenge target.
+```text
+Feature shape: (2718, 23)
+Labels shape: (2718, 7)
+Duplicate feature records: 0
+Duplicate label records: 0
+Feature-label keys match: True
+Target leakage columns: []
 
-## 13. Future Improvements
+ALL FEATURE VALIDATION CHECKS PASSED
+```
+
+## 14. Reproducibility and Validation Reports
+
+The project records dataset metadata and validation results.
+
+### Generate the source manifest
+
+```powershell
+python -m src.logistics_eta.source_manifest
+```
+
+The manifest is saved to:
+
+```text
+reports/source_manifest.json
+```
+
+It contains:
+
+- Dataset names
+- Dataset types
+- File names
+- Record counts
+- Column names
+- Generation methods
+- SHA-256 checksums
+
+The latest generated manifest contains 19 datasets:
+
+| Dataset type | Number of datasets |
+|---|---:|
+| Raw | 11 |
+| Processed | 8 |
+| **Total** | **19** |
+
+### Generate the validation summary
+
+Run this after generating the manifest and multi-snapshot features:
+
+```powershell
+python -m src.logistics_eta.validation_report
+```
+
+The report is saved to:
+
+```text
+reports/validation_summary.json
+```
+
+It checks:
+
+- Dataset file existence
+- Dataset row counts
+- Dataset column counts
+- SHA-256 checksum consistency
+- Feature and label alignment
+- Duplicate feature and label keys
+- Target leakage columns
+- Automated test results
+
+The latest verified validation result was:
+
+```text
+Manifest checks: PASSED
+Feature checks: PASSED
+Automated tests: PASSED
+Overall status: PASSED
+```
+
+## 15. Assumptions and Limitations
+
+- The current datasets are synthetic and use a fixed random seed.
+- Weather exposure indicates a possible disruption overlap; it does not prove that weather caused a delay.
+- Facility queue information is a simplified representation of warehouse congestion.
+- Weather records do not currently contain a separate ingestion timestamp. The feature pipeline uses a documented weather-availability assumption.
+- The prediction snapshots are generated at fixed 0-hour, 12-hour, and 24-hour intervals.
+- The current API uses precomputed features rather than live operational feeds.
+- The model results must be evaluated against real historical logistics data before production use.
+- The starter dataset is smaller than the full-scale challenge target.
+- Full-scale performance and memory usage require additional benchmarking.
+
+More details are available in:
+
+- `docs/ASSUMPTIONS_AND_LIMITATIONS.md`
+- `docs/AI_USAGE.md`
+
+## 16. Future Improvements
 
 - Integrate live carrier tracking APIs.
-- Add real-time weather data.
-- Build dynamic feature calculation for incoming events.
-- Add historical carrier and facility performance features.
+- Add real-time weather data and ingestion timestamps.
+- Implement event-triggered ETA updates.
+- Add historical carrier reliability and facility performance features.
 - Improve model calibration and explainability.
 - Add monitoring for prediction drift and data quality.
+- Benchmark performance with the full-scale dataset.
 - Build a dashboard for shipment monitoring and delay analysis.
+- Add production authentication, logging, and deployment support.
 
-## 14. Reproducibility
+## 17. AI Assistance Disclosure
 
-The default random seed is `20261022`.
+AI tools were used as development assistance for project planning, understanding technical concepts, debugging, code review, test design, and documentation.
 
-To reproduce the experiment, use the same generator version, configuration, dependencies, and seed. Regenerate source datasets instead of manually editing generated CSV files.
+Generated suggestions were reviewed and tested during development. The developer remains responsible for understanding the implementation, verifying results, and explaining the technical decisions.
 
-## 15. Repository
+Refer to `docs/AI_USAGE.md` for further details.
 
-GitHub:
+## 18. Reproducibility
 
+The default random seed is:
+
+```text
+20261022
+```
+
+To reproduce the experiment:
+
+1. Use the documented Python and dependency versions.
+2. Configure the environment variables.
+3. Initialize PostgreSQL.
+4. Generate raw and derived datasets.
+5. Generate multi-snapshot features.
+6. Generate the source manifest and validation report.
+7. Run automated tests.
+
+Regenerate source datasets using the project pipeline rather than manually editing generated CSV files.
+
+---
+
+## Repository
+
+**GitHub:**  
 https://github.com/nagubandichaitanya/logistics-eta-delay-prediction
 
+**Project:** Logistics ETA Prediction and Delay Detection System
+
+**Primary technologies:** Python, PostgreSQL, Pandas, NumPy, Scikit-learn, FastAPI, and Pytest.
