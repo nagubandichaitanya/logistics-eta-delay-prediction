@@ -399,7 +399,7 @@ reports/
 Start the API:
 
 ```powershell
-python -m uvicorn src.logistics_eta.api:app --reload
+uvicorn logistics_eta.api:app --reload --app-dir src
 ```
 
 Open the interactive API documentation:
@@ -436,7 +436,55 @@ Successful predictions are persisted in the PostgreSQL `eta_estimate` table.
 
 **API limitation:** The current API retrieves the latest available precomputed feature snapshot. It does not yet calculate features from live tracking events, real-time weather feeds, or live facility data. It demonstrates the model and API workflow rather than a production live-ETA service.
 
-## 12. Data Validation and Negative Scenario Testing
+
+## 12. Streamlit Dashboard
+
+The project includes a Streamlit dashboard for shipment monitoring, SLA analytics, tracking event visualization, ETA prediction, and delay detection.
+
+### Start the FastAPI Backend
+
+Open the first terminal from the project root and run:
+
+```powershell
+uvicorn logistics_eta.api:app --reload --app-dir src
+```
+
+The API will be available at:
+
+http://127.0.0.1:8000
+
+API documentation:
+
+http://127.0.0.1:8000/docs
+
+### Start the Streamlit Dashboard
+
+Keep the FastAPI backend running.
+
+Open a second terminal from the project root and activate the virtual environment. Run:
+
+```powershell
+streamlit run app.py
+```
+
+The dashboard will be available at:
+
+http://localhost:8501
+
+### Dashboard Features
+
+- Shipment overview and operational KPIs.
+- Delivered, in-transit, and SLA performance metrics.
+- Shipment status and priority filters.
+- Shipment tracking event timeline.
+- ETA prediction using the trained regression model.
+- Delay probability using the trained classification model.
+- FastAPI health monitoring.
+- Prediction details and model version.
+
+**Note:** Predictions use the latest available historical feature snapshot. The dashboard does not currently integrate live GPS or real-time carrier tracking.
+
+## 13. Data Validation and Negative Scenario Testing
 
 The project includes validation for data integrity and temporal correctness.
 
@@ -485,7 +533,7 @@ The latest verified test result during development was:
 9 passed
 ```
 
-## 13. Feature Validation
+## 14. Feature Validation
 
 Run:
 
@@ -514,7 +562,7 @@ Target leakage columns: []
 ALL FEATURE VALIDATION CHECKS PASSED
 ```
 
-## 14. Reproducibility and Validation Reports
+## 15. Reproducibility and Validation Reports
 
 The project records dataset metadata and validation results.
 
@@ -582,7 +630,7 @@ Automated tests: PASSED
 Overall status: PASSED
 ```
 
-## 15. Assumptions and Limitations
+## 16. Assumptions and Limitations
 
 - The current datasets are synthetic and use a fixed random seed.
 - Weather exposure indicates a possible disruption overlap; it does not prove that weather caused a delay.
@@ -599,7 +647,7 @@ More details are available in:
 - `docs/ASSUMPTIONS_AND_LIMITATIONS.md`
 - `docs/AI_USAGE.md`
 
-## 16. Future Improvements
+## 17. Future Improvements
 
 - Integrate live carrier tracking APIs.
 - Add real-time weather data and ingestion timestamps.
@@ -611,7 +659,7 @@ More details are available in:
 - Build a dashboard for shipment monitoring and delay analysis.
 - Add production authentication, logging, and deployment support.
 
-## 17. AI Assistance Disclosure
+## 18. AI Assistance Disclosure
 
 AI tools were used as development assistance for project planning, understanding technical concepts, debugging, code review, test design, and documentation.
 
@@ -619,7 +667,7 @@ Generated suggestions were reviewed and tested during development. The developer
 
 Refer to `docs/AI_USAGE.md` for further details.
 
-## 18. Reproducibility
+## 19. Reproducibility
 
 The default random seed is:
 
