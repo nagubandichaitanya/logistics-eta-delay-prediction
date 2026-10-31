@@ -26,7 +26,7 @@ API_URL = "http://127.0.0.1:8000"
 
 
 # --------------------------------------------------
-# LOAD DATA
+# LOAD DASHBOARD DATA
 # --------------------------------------------------
 
 @st.cache_data
@@ -35,23 +35,47 @@ def load_dashboard_data():
     shipments = pd.read_csv(SHIPMENT_FILE)
     ground_truth = pd.read_csv(GROUND_TRUTH_FILE)
 
-    ground_truth["is_sla_late"] = (
-        ground_truth["is_sla_late"]
-        .astype(str)
+    # Convert text values into Boolean values.
+    # Missing SLA values remain missing (unknown).
+
+    ground_truth["is_delivered"] = (
+        ground_truth["is_delivered"]
+        .astype("string")
         .str.lower()
         .map({"true": True, "false": False})
+        .astype("boolean")
+    )
+
+    ground_truth["is_sla_late"] = (
+        ground_truth["is_sla_late"]
+        .astype("string")
+        .str.lower()
+        .map({"true": True, "false": False})
+        .astype("boolean")
     )
 
     data = shipments.merge(
         ground_truth[
-            ["shipment_id", "is_sla_late"]
+            [
+                "shipment_id",
+                "is_delivered",
+                "is_sla_late"
+            ]
         ],
         on="shipment_id",
         how="left",
         validate="one_to_one"
     )
 
-    data["is_sla_late"] = data["is_sla_late"].fillna(False)
+    # Display label only. This does not change the original SLA label.
+    data["sla_status"] = (
+        data["is_sla_late"]
+        .map({
+            True: "Late",
+            False: "On Time"
+        })
+        .fillna("Pending")
+    )
 
     return data
 
@@ -71,7 +95,7 @@ def load_tracking_data():
         utc=True
     )
 
-    # Exclude duplicate source events
+    # Exclude duplicate source events.
     tracking = tracking[
         tracking["is_duplicate"].astype(str).str.lower() == "false"
     ].copy()
@@ -93,7 +117,7 @@ st.divider()
 
 
 # --------------------------------------------------
-# LOAD DASHBOARD DATA
+# LOAD DATA
 # --------------------------------------------------
 
 try:
@@ -157,26 +181,59 @@ st.subheader("Shipment Overview")
 
 total_shipments = len(data)
 
-delivered = (
-    data["current_status"] == "DELIVERED"
-).sum()
+delivered = int(
+    data["is_delivered"].eq(True).sum()
+)
 
-in_transit = (
-    data["current_status"] == "IN_TRANSIT"
-).sum()
+in_transit = int(
+    data["is_delivered"].eq(False).sum()
+)
 
-late_shipments = int(data["is_sla_late"].sum())
+delivered_late = int(
+    (
+        data["is_delivered"].eq(True)
+        & data["is_sla_late"].eq(True)
+    ).sum()
+)
 
-on_time = total_shipments - late_shipments
+delivered_on_time = int(
+    (
+        data["is_delivered"].eq(True)
+        & data["is_sla_late"].eq(False)
+    ).sum()
+)
 
 col1, col2, col3, col4, col5 = st.columns(5)
 
-col1.metric("Total Shipments", f"{total_shipments:,}")
-col2.metric("Delivered", f"{delivered:,}")
-col3.metric("In Transit", f"{in_transit:,}")
-col4.metric("SLA Late", f"{late_shipments:,}")
-col5.metric("SLA On Time", f"{on_time:,}")
+col1.metric(
+    "Total Shipments",
+    f"{total_shipments:,}"
+)
 
+col2.metric(
+    "Delivered",
+    f"{delivered:,}"
+)
+
+col3.metric(
+    "In Transit",
+    f"{in_transit:,}"
+)
+
+col4.metric(
+    "Delivered Late",
+    f"{delivered_late:,}"
+)
+
+col5.metric(
+    "Delivered On Time",
+    f"{delivered_on_time:,}"
+)
+
+st.caption(
+    "In-transit shipments have a pending SLA outcome and are not "
+    "counted as either delivered late or delivered on time."
+)
 
 st.divider()
 
@@ -237,13 +294,15 @@ with chart_col1:
 
     st.bar_chart(status_counts)
 
+
 with chart_col2:
 
     st.markdown("#### SLA Performance")
 
     sla_counts = pd.Series({
-        "On Time": int(on_time),
-        "Late": int(late_shipments)
+        "Delivered On Time": delivered_on_time,
+        "Delivered Late": delivered_late,
+        "In Transit - Pending": in_transit
     })
 
     st.bar_chart(sla_counts)
@@ -259,12 +318,19 @@ with chart_col3:
 
     st.bar_chart(priority_counts)
 
+
 with chart_col4:
 
-    st.markdown("#### SLA Late Shipments by Priority")
+    st.markdown("#### Delivered Late Rate by Priority")
+
+    # Only shipments with a known SLA outcome are included.
+    known_sla_data = data[
+        data["is_sla_late"].notna()
+    ]
 
     priority_late = (
-        data.groupby("priority")["is_sla_late"]
+        known_sla_data
+        .groupby("priority")["is_sla_late"]
         .mean()
         .mul(100)
         .round(2)
@@ -293,7 +359,7 @@ display_columns = [
     "current_status",
     "priority",
     "weight_kg",
-    "is_sla_late"
+    "sla_status"
 ]
 
 st.dataframe(
@@ -388,7 +454,6 @@ else:
         st.markdown(
             f"""
             **{event_name}**
-
             - Event ID: `{event['event_id']}`
             - Facility: `{event['facility_id']}`
             - Route Leg: `{event['leg_id']}`
@@ -435,9 +500,21 @@ col2.metric(
     shipment_record["priority"]
 )
 
+if pd.isna(shipment_record["is_sla_late"]):
+
+    actual_sla_status = "Pending"
+
+elif shipment_record["is_sla_late"]:
+
+    actual_sla_status = "Late"
+
+else:
+
+    actual_sla_status = "On Time"
+
 col3.metric(
     "Actual SLA Status",
-    "Late" if shipment_record["is_sla_late"] else "On Time"
+    actual_sla_status
 )
 
 
