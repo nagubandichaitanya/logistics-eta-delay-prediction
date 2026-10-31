@@ -159,7 +159,7 @@
     "automated_tests": {
         "passed": true,
         "return_code": 0,
-        "output": ".........                                                                [100%]\n9 passed in 3.43s",
+        "output": ".........                                                                [100%]\n9 passed in 5.93s",
         "errors": ""
     },
     "overall_status": "PASSED"
